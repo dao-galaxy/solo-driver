@@ -65,11 +65,10 @@ impl SoloDriver {
         pool_items.push(self.rpc_socket.as_poll_item(zmq::POLLIN));
 
         loop {
-            zmq::poll(&mut pool_items, 5).unwrap();
+            zmq::poll(&mut pool_items, 5000).unwrap();
             if pool_items[0].is_readable() {
                 self.handle_rpc_request(&self.rpc_socket, &self.tx_pool);
             }
-            thread::sleep(time::Duration::from_secs(sleep_sec as u64));
             if let Some(block) = self.create_block_header() {
                 let block_rlp = rlp::encode(&block);
                 self.new_block_header = Some(block.header);
@@ -81,9 +80,6 @@ impl SoloDriver {
                     self.new_block_header = None;
                     self.new_block_txs = None;
                 }
-                sleep_sec = self.block_duration;
-            } else {
-                sleep_sec = 1;
             }
         }
     }
