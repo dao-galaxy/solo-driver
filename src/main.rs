@@ -4,7 +4,7 @@ mod tx_pool;
 mod config;
 
 use env_logger;
-use log::info;
+use log::{info, debug};
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -14,17 +14,20 @@ use std::str::FromStr;
 use crate::solo::SoloDriver;
 use crate::tx_pool::TxPool;
 use crate::config::{read_config_file, parse_config_string};
+use common_types::ipc::*;
+
 
 fn main() {
     let yaml = load_yaml!("clap.yaml");  // src/clap.yaml
     let matches = App::from(yaml).get_matches();
 
-    let config_file = matches.value_of("config").unwrap(); // target/debug/bloom-solo -c src/bloom.conf
+    let config_file = matches.value_of("config").unwrap_or("src/bloom.conf");
+    // target/debug/bloom-solo -c src/bloom.conf
     let toml_string = read_config_file(config_file);
     let decoded_config = parse_config_string(toml_string.as_str());
     let decoded_config_clone = decoded_config.clone();
 
-    let mut log_level = matches.value_of("log").unwrap_or(
+    let log_level = matches.value_of("log").unwrap_or(
         &decoded_config.log_level.unwrap_or("debug".to_string())
     ).to_string();
 
@@ -49,11 +52,11 @@ fn main() {
     info!("rpc socket: {:?}", rpc_socket);
 
     let tx_pool = Arc::new(Mutex::new(TxPool::default()));
-
     let context = zmq::Context::new();
+
     match consensus.as_str() {
         "solo" => {
-            let mut driver = solo::SoloDriver::new(
+            let mut driver = solo::SoloDriver::initialize(
                 context.clone(),
                 tx_pool.clone(),
                 chain_socket.as_str(),
@@ -65,9 +68,20 @@ fn main() {
             });
             driver_thread.join().unwrap();
         },
-        _ => {},
+        _ => {
+            panic!("Only SOLO consensus be supported!");
+        },
     }
-
 }
 
-
+#[test]
+fn test_query_last_block() {
+    println!("start get lastblock");
+    let my_peer_id = [0 as u8];
+    let context = zmq::Context::new();
+    let chain_socket = context.socket(zmq::DEALER).unwrap();
+    chain_socket.set_identity(&my_peer_id).unwrap();
+    chain_socket.connect("tcp://127.0.0.1:9050").unwrap();
+    let lastblock = query_last_block(&chain_socket);
+    println!("receive lastblock: {:?}", lastblock);
+}

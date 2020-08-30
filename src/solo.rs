@@ -28,17 +28,15 @@ pub struct SoloDriver {
 
 impl SoloDriver {
 
-    pub fn new(
+    pub fn initialize(
         context: zmq::Context,
         tx_pool: Arc<Mutex<TxPool>>,
         chain_socket_str: &str,
         rpc_socket_str: &str,
         block_duration: u64,
     ) -> Self {
-        let mut all_peers: Vec<[u8; 1]> = vec![];
-        all_peers.push([0 as u8]);
         let my_peer_index = 0;
-        let my_peer_id = all_peers[my_peer_index];
+        let my_peer_id = [0 as u8];
 
         let chain_socket = context.socket(zmq::DEALER).unwrap();
         chain_socket.set_identity(&my_peer_id).unwrap();
