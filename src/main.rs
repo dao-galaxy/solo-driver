@@ -9,12 +9,13 @@ use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use clap::{App, load_yaml, ArgMatches, Arg};
-use std::str::FromStr;
 
 use crate::solo::SoloDriver;
 use crate::tx_pool::TxPool;
 use crate::config::{read_config_file, parse_config_string};
 use common_types::ipc::*;
+use ethereum_types::{H160, H512, H256, U256};
+use std::str::FromStr;
 
 
 fn main() {
@@ -75,7 +76,7 @@ fn main() {
 }
 
 #[test]
-fn test_query_block_headers() {
+fn test_query_blockchain() {
     let my_peer_id = [0 as u8];
     let context = zmq::Context::new();
     let chain_socket = context.socket(zmq::DEALER).unwrap();
@@ -83,8 +84,15 @@ fn test_query_block_headers() {
     chain_socket.connect("tcp://127.0.0.1:9050").unwrap();
 
     let lastblock = query_last_block(&chain_socket);
-    println!("receive last block: {:?}", lastblock);
+    println!("Received last block: {:?}", lastblock);
 
     let headers_vec = query_latest_blocks(&chain_socket, 3);
-    println!("receive latest blocks: {:?}", headers_vec);
+    println!("Received latest blocks: {:?}", headers_vec);
+
+    let hash_list = query_tx_hash_list(
+        &chain_socket,
+        H256::from_str( "1ff8f07b779093ceef9d347207535f297230de4b00d2a9cfa945c85297fff5f5").unwrap()
+    );
+    println!("Received tx hash list of block-1ff8...f5f5: {:?}", hash_list);
+
 }
