@@ -18,8 +18,8 @@ uuid = "0.5"
 ethereum-types = "0.9"
 keccak-hash = "0.5"
 
-# common-types = { git = "https://github.com/recursive-bloom/common-types", version = "0.1" }
-common-types = { path = "../common-types", version = "0.1" }
+common-types = { git = "https://github.com/recursive-bloom/common-types", version = "0.1" }
+# common-types = { path = "../common-types", version = "0.1" }
 
 rlp = "0.4"
 
