@@ -75,13 +75,16 @@ fn main() {
 }
 
 #[test]
-fn test_query_last_block() {
-    println!("start get lastblock");
+fn test_query_block_headers() {
     let my_peer_id = [0 as u8];
     let context = zmq::Context::new();
     let chain_socket = context.socket(zmq::DEALER).unwrap();
     chain_socket.set_identity(&my_peer_id).unwrap();
     chain_socket.connect("tcp://127.0.0.1:9050").unwrap();
+
     let lastblock = query_last_block(&chain_socket);
-    println!("receive lastblock: {:?}", lastblock);
+    println!("receive last block: {:?}", lastblock);
+
+    let headers_vec = query_latest_blocks(&chain_socket, 3);
+    println!("receive latest blocks: {:?}", headers_vec);
 }
