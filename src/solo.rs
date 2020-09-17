@@ -5,7 +5,7 @@ use common_types::header::Header;
 use common_types::transaction::{UnverifiedTransaction, SignedTransaction};
 use std::sync::{Mutex, Arc};
 use common_types::ipc::*;
-use log::{debug, error};
+use log::{info, debug, error};
 use ethereum_types::{H256, U256, Address};
 use common_types::block::Block;
 use std::collections::{HashMap, HashSet};
@@ -139,37 +139,39 @@ impl SoloDriver {
 
     pub fn create_block_header(&self) -> Option<Block> {
         let txs = self.select_txs();
+        let mut ret = None;
+        if !txs.is_empty() {
+            let create_block_header_request = CreateHeaderReq {
+                parent_block_hash: self.current_block_header.clone().unwrap().hash(),
+                author: self.my_address(),
+                extra_data: vec![],
+                gas_limit: U256::from(1000),
+                difficulty: U256::from(0),
+                transactions: txs.clone(),
+            };
+            debug!(
+                "start create_block_header_request: {:?}",
+                create_block_header_request
+            );
+            let request = IpcRequest {
+                method: "CreateHeader".into(),
+                id: 2,
+                params: rlp::encode(&create_block_header_request),
+            };
 
-        if txs.is_empty() {
-            return None;
+            let reply = request_chain(&self.chain_socket, request);
+            info!("{:?}", reply);
+            if reply.status == 0 {
+                let res: CreateHeaderResp = rlp::decode(&reply.result).unwrap();
+                let new_block_header = res.0;
+                debug!("receive new_block_header: {:?}", new_block_header);
+                ret = Some(Block {
+                    header: new_block_header,
+                    transactions: txs,
+                });
+            }
         }
-
-        let create_block_header_request = CreateHeaderReq {
-            parent_block_hash: self.current_block_header.clone().unwrap().hash(),
-            author: self.my_address(),
-            extra_data: vec![],
-            gas_limit: U256::from(1000),
-            difficulty: U256::from(0),
-            transactions: txs.clone(),
-        };
-        debug!(
-            "start create_block_header_request: {:?}",
-            create_block_header_request
-        );
-        let request = IpcRequest {
-            method: "CreateHeader".into(),
-            id: 2,
-            params: rlp::encode(&create_block_header_request),
-        };
-
-        let reply = request_chain(&self.chain_socket, request);
-        let res: CreateHeaderResp = rlp::decode(&reply.result).unwrap();
-        let new_block_header = res.0;
-        debug!("receive new_block_header: {:?}", new_block_header);
-        Some(Block {
-            header: new_block_header,
-            transactions: txs,
-        })
+        ret
     }
 
     pub fn select_txs(&self) -> Vec<UnverifiedTransaction> {
@@ -275,6 +277,7 @@ impl SoloDriver {
 
                 let res = IpcReply {
                     id: request.id,
+                    status: 0u64,
                     result: rlp::encode(&b"ok".to_vec()),
                 };
                 rpc_socket.send_multipart(vec![zmq_identity, rlp::encode(&res)], 0).unwrap();
